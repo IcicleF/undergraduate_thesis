@@ -2,7 +2,7 @@
 % !TeX program = xelatex
 % !TeX spellcheck = en_US
 
-\documentclass[degree=master,fontset=windows]{thuthesis}
+\documentclass[degree=bachelor,fontset=windows]{thuthesis}
   % 学位 degree:
   %   doctor | master | bachelor | postdoc
   % 学位类型 degree-type:
@@ -12,6 +12,15 @@
 % 论文基本配置，加载宏包等全局配置
 \input{thusetup.tex}
 
+\thusetup{
+  title         = {高可用分布式持久内存文件系统设计与实现},
+  department    = {计算机科学与技术系},
+  discipline    = {计算机科学与技术},
+  author        = {高健},
+  author*       = {Gao Jian},
+  supervisor    = {舒继武, 教授},
+  supervisor*   = {Shu Jiwu, Professor},
+}
 
 \begin{document}
 
@@ -35,20 +44,21 @@
 \mainmatter
 \input{data/chap01}
 \input{data/chap02}
+\input{data/chap03}
 
 
 % 其它部分
 \backmatter
 
 %% 本科生要求的几个索引。
-% \listoffigures    % 插图索引
-% \listoftables     % 表格索引
+\listoffigures    % 插图索引
+\listoftables     % 表格索引
 % \listofequations  % 公式索引
 
 % 参考文献
-\bibliographystyle{thuthesis-numeric}      % 顺序编码制
+% \bibliographystyle{thuthesis-numeric}      % 顺序编码制
 % \bibliographystyle{thuthesis-author-year}  % 著者-出版年制
-% \bibliographystyle{thuthesis-bachelor}     % 本科生参考文献的著录格式
+\bibliographystyle{thuthesis-bachelor}     % 本科生参考文献的著录格式
 \bibliography{ref/refs}
 
 % 致谢
@@ -59,12 +69,12 @@
 
 % 附录
 \appendix
-% \input{data/appendix-survey}       % 本科生：外文资料的调研阅读报告
+\input{data/appendix-survey}       % 本科生：外文资料的调研阅读报告
 % \input{data/appendix-translation}  % 本科生：外文资料的书面翻译
-\input{data/appendix}
+% \input{data/appendix}
 
 % 个人简历
-\input{data/resume}
+% \input{data/resume}
 
 % 本科生的综合论文训练记录表
 % \includepdf[pages=-]{scan-record.pdf}

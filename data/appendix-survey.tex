@@ -3,170 +3,45 @@
 \begin{survey}
 \label{cha:survey}
 
-\title{Title of the Survey}
+\title{Literature Review of RDMA-Enabled Distributed File Systems on NVM}
 \maketitle
 
-写出至少 5000 外文印刷字符的调研阅读报告或者书面翻译 1-2 篇(不少于 2 万外文印刷符)。
+High-performance, byte-addressable non-volatile memories (NVMs) developed dramatically and have been the cutting-edge of storage systems in recent years. Prior to its advent, distributed system designers find that the system’s performance is mainly limited by the access latency of the underlying block device. Both hard-disks and solid-state drives (SSDs) are much slower than DRAM, leading to complex, specialized designs for better efficiency \cite{orion2019}.
 
-It is impossible to cover in a single chapter every concept of mathematical
-programming.\cite{tex} This chapter introduces only the basic concepts and techniques of
-mathematical programming such that readers gain an understanding of them
-throughout the book\cite{abrahams99tex,salomon1995advanced}.
+However, the appearance of NVM brings us low-cost, high-capacity and byte-addressable fast persistent data storage. Media access latency no longer determines the whole system’s performance, which forces designers to rethink those tradeoffs with networking overhead and CPU involvement \cite{orion2019}. With remote direct memory access (RDMA), NVM access over the InfiniBand network is also efficient enough, promising a bright future for RDMA-based NVM distributed storage systems \cite{assise2019}.
 
+Many new file systems are designed to fully exploit the features of NVM and RDMA for better performance. They share the same design principle, that the overheads of kernel/user crossing and network accesses should be reduced to minimal. All these systems must provide data consistency, while they can also have additional features like availability, fault tolerance, and failure recovery. Due to the CAP Theorem, they must make different tradeoffs among these features, resulting in the diversity of these systems. {\em Octopus} \cite{octopus2017}, {\em Orion} \cite{orion2019}, and {\em Assise} \cite{assise2019} are three typical examples of NVM-specialized distributed file systems. Octopus was first published in 2017, and Orion and Assise were both published in 2019.
 
-\section{Single-Objective Programming}
-The general form of single-objective programming (SOP) is written
-as follows,
-\begin{equation*} % 如果附录中的公式不想让它出现在公式索引中，那就请
-                             % 用 equation*
-\left\{\begin{array}{l}
-\max \,\,f(x)\\[0.1 cm]
-\mbox{subject to:} \\ [0.1 cm]
-\qquad g_j(x)\le 0,\quad j=1,2,\cdots,p
-\end{array}\right.
-\end{equation*}
-which maximizes a real-valued function $f$ of
-$x=(x_1,x_2,\cdots,x_n)$ subject to a set of constraints.
+\section{Octopus}
+Octopus exploits the fact that a remote procedure call (RPC) is much more expensive than an RDMA verb. From this fact, Octopus stated that the client should actively fetch data from the server, instead of incurring an RPC request and simply waiting for the server to prepare the data and send it back. We may call it the Client-Active Principle and we will see it later. Octopus also proposed improved transaction protocols. Transaction is a fundamental mechanism in storage systems to ensure atomicity, concurrency, and crash consistency. To support transactions, original approaches consist of no less than 2 remote procedure calls (RPCs) and incurs high overheads, while Octopus proposed a new protocol named Collect-Dispatch Transaction which needs only 1 RPC and 2 RDMA verbs. As we mentioned above, RDMA verbs incur far less overhead, and therefore the new protocol is faster.
 
-\newcommand\Real{\mathbf{R}}
-\newtheorem{mpdef}{Definition}[chapter]
-\begin{mpdef}
-In SOP, we call $x$ a decision vector, and
-$x_1,x_2,\cdots,x_n$ decision variables. The function
-$f$ is called the objective function. The set
-\begin{equation*}
-S=\left\{x\in\Real^n\bigm|g_j(x)\le 0,\,j=1,2,\cdots,p\right\}
-\end{equation*}
-is called the feasible set. An element $x$ in $S$ is called a
-feasible solution.
-\end{mpdef}
+However, Octopus also has its drawbacks:
 
-\newtheorem{mpdefop}[mpdef]{Definition}
-\begin{mpdefop}
-A feasible solution $x^*$ is called the optimal
-solution of SOP if and only if
-\begin{equation}
-f(x^*)\ge f(x)
-\end{equation}
-for any feasible solution $x$.
-\end{mpdefop}
+\begin{itemize}
+    \item it cannot tolerate any client’s failure; 
+    \item it uses a simplified file system model and only supports small file and directory sizes \cite{orion2019};
+    \item it locates files at different clients based on hash values and therefore is insensitive to data locality;
+    \item it makes no use of DRAM, accelerating write operations but significantly slowing down read operations \cite{assise2019}.
+\end{itemize}
 
-One of the outstanding contributions to mathematical programming was known as
-the Kuhn-Tucker conditions\ref{eq:ktc}. In order to introduce them, let us give
-some definitions. An inequality constraint $g_j(x)\le 0$ is said to be active at
-a point $x^*$ if $g_j(x^*)=0$. A point $x^*$ satisfying $g_j(x^*)\le 0$ is said
-to be regular if the gradient vectors $\nabla g_j(x)$ of all active constraints
-are linearly independent.
+Later works, like Orion and Assise, pay more attention to these problems.
 
-Let $x^*$ be a regular point of the constraints of SOP and assume that all the
-functions $f(x)$ and $g_j(x),j=1,2,\cdots,p$ are differentiable. If $x^*$ is a
-local optimal solution, then there exist Lagrange multipliers
-$\lambda_j,j=1,2,\cdots,p$ such that the following Kuhn-Tucker conditions hold,
-\begin{equation}
-\label{eq:ktc}
-\left\{\begin{array}{l}
-    \nabla f(x^*)-\sum\limits_{j=1}^p\lambda_j\nabla g_j(x^*)=0\\[0.3cm]
-    \lambda_jg_j(x^*)=0,\quad j=1,2,\cdots,p\\[0.2cm]
-    \lambda_j\ge 0,\quad j=1,2,\cdots,p.
-\end{array}\right.
-\end{equation}
-If all the functions $f(x)$ and $g_j(x),j=1,2,\cdots,p$ are convex and
-differentiable, and the point $x^*$ satisfies the Kuhn-Tucker conditions
-(\ref{eq:ktc}), then it has been proved that the point $x^*$ is a global optimal
-solution of SOP.
+\section{Orion}
+Orion further exploits the speed of RDMA requests and aggressively uses RDMA wherever it can. Inherited from NOVA\cite{xu2016}, it is log-structured and ensures strong data consistency by atomic operations on a centralized metadata server (MDS). The MDS maintains a log for each inode. When the client needs to update a file, it first fetches the pointer to the corresponding inode log from the server, then updates the log locally. Next, the client writes the updated part to the MDS using an RDMA write request, and finally notifies the server by an optimized RPC. For every file request, the client consults the MDS to ensure data consistency. If it finds any conflict, it blocks the request and rebuilds in-memory data structures and retries. DRAM cache is used to exploit data locality. The system is based on NOVA and Mojim: both are previously published distributed file systems, while the former provides efficiency and the latter provides availability and crash consistency. As a result, Orion outperforms existing distributed file systems in file system operation (FSop) latencies and I/O throughput. Orion is also well-scalable at the "rack-scale", i.e. around 10 clients, under the assumption that it will not be limited by the MDS bandwidth bottleneck.
 
-\subsection{Linear Programming}
-\label{sec:lp}
+We can see that Orion’s designers treat the Client-Active Principle as common sense, as they never mention Octopus when describing their system’s design. By the time of the advent of Orion, characteristics of NVMs, RDMA requests, and RPCs are already well-known. State-of-the-art distributed file systems implement the most efficient strategy en masse, using small-sized RPCs for acknowledgment and RDMA requests to send large-sized data for best efficiency. We will also see this in Assise.
 
-If the functions $f(x),g_j(x),j=1,2,\cdots,p$ are all linear, then SOP is called
-a {\em linear programming}.
+\section{Assise}
+Assise put more efforts on system availability and crash consistency. It implements a novel distributed cache layer, named CC-NVM, to provide these features. For access speed, it takes advantage of the fact that NVM is much faster than local cold storage (e.g. HDD or SSD), even if located remote. It builds a three-layer cache hierarchy consisting of DRAM (for applications), local NVM (for client nodes), and remote NVM. To guarantee that applications can always get access to the newest data, it employs the LRU policy in CC-NVM. For crash consistency, it uses a replication chain to ensure the prefix semantics – that is, the system can always recover after a failure to a state which is the result of a prefix of the operation sequence. When doing replication, a node writes data to the log area of its successor in the replication chain, incurs a small RPC to notify the successor to continue the chain, and then waits for an acknowledgment RPC back.
 
-The feasible set of linear is always convex. A point $x$ is called an extreme
-point of convex set $S$ if $x\in S$ and $x$ cannot be expressed as a convex
-combination of two points in $S$. It has been shown that the optimal solution to
-linear programming corresponds to an extreme point of its feasible set provided
-that the feasible set $S$ is bounded. This fact is the basis of the {\em simplex
-  algorithm} which was developed by Dantzig as a very efficient method for
-solving linear programming.
-\begin{table}[ht]
-\centering
-  \centering
-  \caption*{Table~1\hskip1em This is an example for manually numbered table, which
-    would not appear in the list of tables}
-  \label{tab:badtabular2}
-  \begin{tabular}[c]{|m{1.5cm}|c|c|c|c|c|c|}\hline
-    \multicolumn{2}{|c|}{Network Topology} & \# of nodes &
-    \multicolumn{3}{c|}{\# of clients} & Server \\\hline
-    GT-ITM & Waxman Transit-Stub & 600 &
-    \multirow{2}{2em}{2\%}&
-    \multirow{2}{2em}{10\%}&
-    \multirow{2}{2em}{50\%}&
-    \multirow{2}{1.2in}{Max. Connectivity}\\\cline{1-3}
-    \multicolumn{2}{|c|}{Inet-2.1} & 6000 & & & &\\\hline
-    \multirow{2}{1.5cm}{Xue} & Rui  & Ni &\multicolumn{4}{c|}{\multirow{2}*{\thuthesis}}\\\cline{2-3}
-    & \multicolumn{2}{c|}{ABCDEF} &\multicolumn{4}{c|}{} \\\hline
-\end{tabular}
-\end{table}
+Assise also supports replicas at both application and client node levels. It uses heartbeat messages to detect crashes, and once a crash occurs, Assise immediately fails-over to the replica process or client node. Process crashes only need a quick restart to get fixed, but node failures take more time for we must reboot the OS. To speed it up, Assise stores a snapshot of a freshly booted OS in the NVM and recovers the system to the snapshot when necessary. As a result, Assise also outperforms existing systems in FSop latencies and throughput mainly because of its good cache layer design. It is also highly available and recovers fast from failure. Although Assise is published several months later than Orion, its authors did not compare the two systems together because Orion’s source code is currently not publicly available.
 
-Roughly speaking, the simplex algorithm examines only the extreme points of the
-feasible set, rather than all feasible points. At first, the simplex algorithm
-selects an extreme point as the initial point. The successive extreme point is
-selected so as to improve the objective function value. The procedure is
-repeated until no improvement in objective function value can be made. The last
-extreme point is the optimal solution.
+We see the Client-Active Principle again at the chain-replication part of Assise. A node continues the chain by an RDMA write and a small RPC for notification. The successor node is not responsible for its own replica, because this brings large RPC overheads if we do so. In about two years, this principle changes from a new concept to common sense. It shows that NVM-based distributed systems are really developing very rapidly.
 
-\subsection{Nonlinear Programming}
-
-If at least one of the functions $f(x),g_j(x),j=1,2,\cdots,p$ is nonlinear, then
-SOP is called a {\em nonlinear programming}.
-
-A large number of classical optimization methods have been developed to treat
-special-structural nonlinear programming based on the mathematical theory
-concerned with analyzing the structure of problems.
-\begin{figure}[h]
-  \centering
-  \includegraphics{thu-lib-logo.pdf}
-  \caption*{Figure~1\quad This is an example for manually numbered figure,
-    which would not appear in the list of figures}
-  \label{tab:badfigure2}
-\end{figure}
-
-Now we consider a nonlinear programming which is confronted solely with
-maximizing a real-valued function with domain $\Real^n$.  Whether derivatives are
-available or not, the usual strategy is first to select a point in $\Real^n$ which
-is thought to be the most likely place where the maximum exists. If there is no
-information available on which to base such a selection, a point is chosen at
-random. From this first point an attempt is made to construct a sequence of
-points, each of which yields an improved objective function value over its
-predecessor. The next point to be added to the sequence is chosen by analyzing
-the behavior of the function at the previous points. This construction continues
-until some termination criterion is met. Methods based upon this strategy are
-called {\em ascent methods}, which can be classified as {\em direct methods},
-{\em gradient methods}, and {\em Hessian methods} according to the information
-about the behavior of objective function $f$. Direct methods require only that
-the function can be evaluated at each point. Gradient methods require the
-evaluation of first derivatives of $f$. Hessian methods require the evaluation
-of second derivatives. In fact, there is no superior method for all
-problems. The efficiency of a method is very much dependent upon the objective
-function.
-
-\subsection{Integer Programming}
-
-{\em Integer programming} is a special mathematical programming in which all of
-the variables are assumed to be only integer values. When there are not only
-integer variables but also conventional continuous variables, we call it {\em
-  mixed integer programming}. If all the variables are assumed either 0 or 1,
-then the problem is termed a {\em zero-one programming}. Although integer
-programming can be solved by an {\em exhaustive enumeration} theoretically, it
-is impractical to solve realistically sized integer programming problems. The
-most successful algorithm so far found to solve integer programming is called
-the {\em branch-and-bound enumeration} developed by Balas (1965) and Dakin
-(1965). The other technique to integer programming is the {\em cutting plane
-  method} developed by Gomory (1959).
-
-\hfill\textit{Uncertain Programming\/}\quad(\textsl{BaoDing Liu, 2006.2})
+\section{Summary}
+By observing Orion and Assise we still see several problems in the designing of a distributed system. The arrangement of metadata is a key point, and Orion takes the approach of a centralized MDS while Assise distributed metadata to the clients. The former one is limited by the bandwidth of the MDS and the latter one introduces consulting overheads when accessing metadata. Also, we must consider load balancing among the clients, which may require splitting files to chunks to support large files and make full use of the network bandwidth. Further, there is a chance to further improve the availability of the system. Although erasure codes can be applied in a distributed file system to improve availability, few have considered this before and most researchers still stick to the traditional replication approach. Our aim is to improve Octopus by not only overcoming its own shortcomings, but also making thorough investigations about the abovementioned problems and implementing an optimal solution to make it state-of-the-art.
 
 \bibliographystyle{plainnat}
-\bibliography{ref/refs,ref/appendix}
+\bibliography{ref/refs}
 
 \end{survey}
