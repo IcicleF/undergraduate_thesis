@@ -3,22 +3,22 @@
 % 中英文摘要和关键字
 
 \begin{abstract}
-  可用性是分布式文件系统的重要属性之一。近年来，持久性内存（NVM）技术出现并高速发展，给这一领域带来了新的机遇。通过合理地利用 NVM 高速、字节粒度访问的特性，系统能够以更低的开销、更高的速度提供高可用的文件存储服务。
-
-  本文提出一种面向 NVM 存储的分布式文件系统。该系统使用纠删码提供可用性保障，其性能不低于使用备份策略的传统分布式文件系统，并且在相同容错条件下显著节省所需的存储空间。测试显示。
+  可用性是文件系统的重要属性。持久性内存（NVM）是一种新型、高速的存储介质，基于 NVM 的分布式文件系统技术近年来发展迅速，有必要为其寻找适合的可用性策略。
+  
+  本文从节省 NVM 存储成本的角度出发，提出一个使用纠删码的文件系统原型。该系统实现了针对 NVM 存储环境优化的纠删码方案，并对其性能表现作了综合测试。实验结果表明，与传统的数据备份方案相比，纠删码在保持相同可用性水平的同时，减少了 50\% 的存储空间开销；同时，其数据写入性能也与之相近或更优，其中写延迟最多降低 10\%，写带宽最多提升 11\%。结果证明了纠删码能以较低开销取得较高性能，适合作为基于 NVM 的分布式系统的可用性策略。
 
   % 关键词用“英文逗号”分隔
   \thusetup{
-    keywords = {NVM, RDMA, 分布式文件系统, 可用性},
+    keywords = {纠删码, 可用性, 持久内存, 分布式文件系统},
   }
 \end{abstract}
 
 \begin{abstract*}
-  Availability is a key feature of distributed file systems. In recent years, the advent and rapid development of non-volatile memory (NVM) technology brings new chances to this field. By leveraging the high-performance and byte-addressable features of NVMs, the system can provide file storage service with lower cost, higher speed, and together with high availability.
-
-  In this paper, we present a new distributed file system for NVM-based storage, which uses erasure codes to guarantee its availability. It performs no worse than traditional systems using replication as their availability strategy, while using far less storage with the same fault-tolerance ability. Evaluations show that. 
+  Availability is a key feature of file systems. Non-volatile memory (NVM) is a new type of persistent storage with notably high speed, and distributed file system technology based on NVM are developing rapidly in recent years. It is necessary to find a proper availability solution for those systems.
+  
+  Born from the idea of saving NVM storage costs, this paper presents a file system prototype that leverages erasure codes. It implements coding strategies optimized for distributed NVM storage environment and tests them thoroughly. Results shows that, comparing to conventional data backup mechanisms, erasure codes achieve the same availability level with 50\% less space usage. It also provides similar or better performances, reducing the write latency by up to 10\% and improving the write bandwidth by up to 11\%. The results demonstrated that erasure codes can perform well with lower costs and is suitable for NVM-based distributed file systems.
 
   \thusetup{
-    keywords* = {NVM, RDMA, distributed file system, availability},
+    keywords* = {erasure coding, availability, non-volatile memory, distributed file system},
   }
 \end{abstract*}
