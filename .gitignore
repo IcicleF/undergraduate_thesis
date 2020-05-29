@@ -1,8 +1,21 @@
+## distribution files
+.DS_Store
+package-lock.json
+node_modules/
+dist/
 
-# Created by https://www.gitignore.io/api/tex
-# Edit at https://www.gitignore.io/?templates=tex
+## generated files:
+dtx-style.sty
+thuthesis.cls
+thuthesis.pdf
+main.pdf
+spine.pdf
+*.hd
 
-### TeX ###
+## test files:
+build/
+testfiles/**/*.pdf
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
@@ -16,6 +29,10 @@
 *.cb
 *.cb2
 .*.lb
+!testfiles/**/*.aux
+!testfiles/**/*.toc
+!testfiles/**/*.lof
+!testfiles/**/*.lot
 
 ## Intermediate documents:
 *.dvi
@@ -212,6 +229,9 @@ pythontex-files-*/
 *.md5
 *.auxlock
 
+# titletoc
+*.ptc
+
 # todonotes
 *.tdo
 
@@ -231,8 +251,9 @@ pythontex-files-*/
 # xindy
 *.xdy
 
-# xypic precompiled matrices
+# xypic precompiled matrices and outlines
 *.xyc
+*.xyd
 
 # endfloat
 *.ttt
@@ -267,12 +288,3 @@ TSWLatexianTemp*
 
 # standalone packages
 *.sta
-
-### TeX Patch ###
-# glossaries
-*.glstex
-
-# End of https://www.gitignore.io/api/tex
-
-pdf/
-.vscode/

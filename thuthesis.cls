@@ -21,11 +21,21 @@
 %% To produce the documentation run the original source files ending with `.dtx'
 %% through LaTeX.
 %% 
-\NeedsTeXFormat{LaTeX2e}
+\NeedsTeXFormat{LaTeX2e}[2017/04/15]
 \ProvidesClass{thuthesis}
 [2020/02/23 6.0.2 Tsinghua University Thesis Template]
-\RequirePackage{ifxetex}
-\RequireXeTeX
+\newcommand\thu@error[1]{%
+  \ClassError{thuthesis}{#1}{}%
+}
+\@ifl@t@r\fmtversion{2017/04/15}{}{
+  \thu@error{%
+    TeX Live 2017 or later version is required to compile this document%
+  }
+}
+\RequirePackage{iftex}
+\ifXeTeX\else
+  \thu@error{XeLaTeX is required to compile this document}
+\fi
 \hyphenation{Thu-Thesis}
 \def\thuthesis{ThuThesis}
 \def\version{6.0.2}
@@ -36,11 +46,8 @@
   family=thu,
   prefix=thu@,
   setkeys=\kvsetkeys}
-\newcommand\thu@error[1]{%
-  \ClassError{thuthesis}{#1}{}%
-}
-\newcommand\thusetup{%
-  \kvsetkeys{thu}%
+\newcommand\thusetup[1]{%
+  \kvsetkeys{thu}{#1}%
 }
 \newcommand\thu@define@key[1]{%
   \kvsetkeys{thu@key}{#1}%
@@ -52,20 +59,8 @@
   \kv@define@key{thu@value}{name}{%
     \@namedef{thu@#1@@name}{##1}%
   }%
-  \kv@define@key{thu@value}{code}{%
-    \@namedef{thu@#1@@code}{##1}%
-  }%
   \@namedef{thu@#1@@check}{}%
   \@namedef{thu@#1@@code}{}%
-  \@namedef{thu@#1@@hook}{%
-    \expandafter\ifx\csname\@currname.\@currext-h@@k\endcsname\relax
-      \@nameuse{thu@#1@@code}%
-    \else
-      \AtEndOfClass{%
-        \@nameuse{thu@#1@@code}%
-      }%
-    \fi
-  }%
   \kv@define@key{thu@value}{choices}{%
     \def\thu@@choices{##1}%
     \@namedef{thu@#1@@reset}{}%
@@ -97,26 +92,15 @@
   \expandafter\let\csname thu@\@nameuse{thu@#1@@name}\endcsname\thu@@default
   \expandafter\ifx\csname thu@\@nameuse{thu@#1@@name}\endcsname\@empty\else
     \@nameuse{thu@#1@@check}%
-    \@nameuse{thu@#1@@hook}%
   \fi
   \kv@define@key{thu}{#1}{%
     \@namedef{thu@\@nameuse{thu@#1@@name}}{##1}%
     \@nameuse{thu@#1@@check}%
-    \@nameuse{thu@#1@@hook}%
+    \@nameuse{thu@#1@@code}%
   }%
 }
-\newcommand\thu@addto[2]{%
+\newcommand\thu@option@hook[2]{%
   \expandafter\g@addto@macro\csname thu@#1@@code\endcsname{#2}%
-}
-\newif\ifthu@degree@graduate
-\newcommand\thu@set@graduate{%
-  \thu@degree@graduatefalse
-  \ifthu@degree@doctor
-    \thu@degree@graduatetrue
-  \fi
-  \ifthu@degree@master
-    \thu@degree@graduatetrue
-  \fi
 }
 \thu@define@key{
   degree = {
@@ -127,7 +111,6 @@
       postdoc,
     },
     default = doctor,
-    code = {\thu@set@graduate},
   },
   degree-type = {
     choices = {
@@ -143,13 +126,38 @@
     },
   },
 }
+\newif\ifthu@degree@graduate
+\newcommand\thu@set@graduate{%
+  \thu@degree@graduatefalse
+  \ifthu@degree@doctor
+    \thu@degree@graduatetrue
+  \fi
+  \ifthu@degree@master
+    \thu@degree@graduatetrue
+  \fi
+}
+\thu@set@graduate
+\thu@option@hook{degree}{%
+  \thu@set@graduate
+}
+\DeclareBoolOption[false]{openright}
+\DeclareComplementaryOption{openany}{openright}
 \DeclareBoolOption[true]{raggedbottom}
 \DeclareDefaultOption{\PassOptionsToClass{\CurrentOption}{ctexbook}}
 \ProcessKeyvalOptions*
+\ifthu@openright
+  \PassOptionsToClass{openright}{book}
+\else
+  \PassOptionsToClass{openany}{book}
+\fi
 \PassOptionsToPackage{quiet}{xeCJK}
-\LoadClass[a4paper,openany,UTF8,zihao=-4,scheme=plain]{ctexbook}
+\LoadClass[a4paper,UTF8,zihao=-4,scheme=plain]{ctexbook}[2017/04/01]
 \RequirePackage{etoolbox}
 \RequirePackage{xparse}
+\RequirePackage{geometry}%
+\RequirePackage{fancyhdr}
+\RequirePackage{titletoc}
+\RequirePackage{notoccite}
 \RequirePackage{amsmath}
 \RequirePackage{unicode-math}
 \RequirePackage{graphicx}
@@ -170,19 +178,24 @@
 \RequirePackage[sort&compress]{natbib}
 \RequirePackage{bibunits}
 \RequirePackage{url}
-\urlstyle{same}
-\g@addto@macro\UrlBreaks{%
-  \do0\do1\do2\do3\do4\do5\do6\do7\do8\do9%
-  \do\A\do\B\do\C\do\D\do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M
-  \do\N\do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X\do\Y\do\Z
-  \do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m
-  \do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z
+\RequirePackage{filehook}
+\newcommand\thu@package@conflict[2]{
+  \AtBeginOfPackageFile*{#2}{
+    \thu@error{The "#2" package is incompatible with required "#1"}
+  }
 }
-\Urlmuskip=0mu plus 0.1mu
-\RequirePackage{geometry}
+\thu@package@conflict{unicode-math}{amscd}
+\thu@package@conflict{unicode-math}{amsfonts}
+\thu@package@conflict{unicode-math}{amssymb}
+\thu@package@conflict{unicode-math}{bbm}
+\thu@package@conflict{unicode-math}{bm}
+\thu@package@conflict{unicode-math}{eucal}
+\thu@package@conflict{unicode-math}{eufrak}
+\thu@package@conflict{unicode-math}{mathrsfs}
 \geometry{
   a4paper, % 210 * 297mm
-  nomarginpar,
+  marginparwidth = 2cm,
+  marginparsep = 0.5cm
 }
 \ifthu@degree@bachelor
   \geometry{
@@ -202,20 +215,19 @@
     footskip   = 0.8cm,
   }
 \fi
-\RequirePackage{fancyhdr}
-\RequirePackage{notoccite}
 \let\thu@cleardoublepage\cleardoublepage
 \newcommand{\thu@clearemptydoublepage}{%
   \clearpage{\pagestyle{thu@empty}\thu@cleardoublepage}}
 \let\cleardoublepage\thu@clearemptydoublepage
 \renewcommand\frontmatter{%
-  \if@openright\cleardoublepage\else\clearpage\fi
-  \@mainmatterfalse
   \ifthu@degree@bachelor
+    \clearpage
     \pagestyle{thu@plain}
   \else
+    \cleardoublepage
     \pagestyle{thu@headings}
   \fi
+  \@mainmatterfalse
   \pagenumbering{Roman}%
   \let\@tabular\thu@tabular
 }
@@ -337,86 +349,131 @@
 \thu@def@fontsize{xiaoliu}{6.5bp}
 \thu@def@fontsize{qihao}{5.5bp}
 \thu@def@fontsize{bahao}{5bp}
-\newcommand\thu@setchinese{%
-  \xeCJKResetPunctClass
-}
-\newcommand\thu@setenglish{%
-  \xeCJKDeclareCharClass{HalfLeft}{"2018, "201C}%
-  \xeCJKDeclareCharClass{HalfRight}{
-    "00B7, "2019, "201D, "2013, "2014, "2025, "2026, "2E3A,
-  }%
-}
-\newcommand\thu@setdefaultlanguage{%
-  \ifthu@language@chinese
-    \thu@setchinese
-  \else
-    \thu@setenglish
+\let\thu@main@language\thu@language
+\thu@option@hook{language}{%
+  \ifx\@begindocumenthook\@undefined
+    \let\thu@main@language\thu@language
   \fi
 }
-\ifthu@language@chinese
-  \ctexset{
-    chapter/name   = {第,章},
-    appendixname   = 附录,
-    contentsname   = {目\hspace{\ccwd}录},
-    listfigurename = 插图索引,
-    listtablename  = 表格索引,
-    figurename     = 图,
-    tablename      = 表,
-    bibname        = 参考文献,
-    indexname      = 索引,
-  }
-  \newcommand\thu@denotation@name{主要符号对照表}
-  \newcommand\listequationname{公式索引}
-  \newcommand\equationname{公式}
-  \newcommand\thu@assumption@name{假设}
-  \newcommand\thu@definition@name{定义}
-  \newcommand\thu@proposition@name{命题}
-  \newcommand\thu@lemma@name{引理}
-  \newcommand\thu@theorem@name{定理}
-  \newcommand\thu@axiom@name{公理}
-  \newcommand\thu@corollary@name{推论}
-  \newcommand\thu@exercise@name{练习}
-  \newcommand\thu@example@name{例}
-  \newcommand\thu@remark@name{注释}
-  \newcommand\thu@problem@name{问题}
-  \newcommand\thu@conjecture@name{猜想}
-  \newcommand\thu@proof@name{证明}
-  \newcommand\thu@theorem@separator{：}
-  \newcommand\thu@ack@name{致\hspace{\ccwd}谢}
-  \ifthu@degree@bachelor
-    \newcommand\thu@resume@title{在学期间参加课题的研究成果}
-  \else
-    \ifthu@degree@postdoc
-      \newcommand\thu@resume@title{个人简历、发表的学术论文与科研成果}
+\newcommand\thu@reset@main@language{
+  \thusetup{language = \thu@main@language}
+}
+\newcommand\thu@set@chapter@names{%
+  \ifthu@language@chinese
+    \ctexset{
+      chapter/name   = {第,章},
+      appendixname   = 附录,
+      contentsname   = 目\hspace{\ccwd}录,
+      listfigurename = 插图索引,
+      listtablename  = 表格索引,
+      bibname        = 参考文献,
+      indexname      = 索引,
+    }
+    \def\thu@denotation@name{主要符号对照表}
+    \def\listequationname{公式索引}
+    \def\thu@acknowledgements@name{致\hspace{\ccwd}谢}
+    \ifthu@degree@bachelor
+      \def\thu@resume@name{在学期间参加课题的研究成果}
     \else
-      \newcommand\thu@resume@title{个人简历、在学期间发表的学术论文与研究成果}
+      \ifthu@degree@postdoc
+        \def\thu@resume@name{个人简历、发表的学术论文与科研成果}
+      \else
+        \def\thu@resume@name{个人简历、在学期间发表的学术论文与研究成果}
+      \fi
+    \fi
+  \else
+    \ctexset{
+      chapter/name   = Chapter,
+      appendixname   = Appendix,
+      contentsname   = Contents,
+      listfigurename = List of Figures,
+      listtablename  = List of Tables,
+      bibname        = Bibliography,
+      indexname      = Index,
+    }
+    \ifthu@language@english
+      \def\thu@denotation@name{Nomenclature}
+      \def\listequationname{List of Equations}
+      \def\thu@acknowledgements@name{Acknowledgements}
+      \ifthu@degree@bachelor
+        \def\thu@resume@name{Research Achievements}
+      \else
+        \def\thu@resume@name{Resume, Publications and Research Achievements}
+      \fi
     \fi
   \fi
-\else
-  \newcommand\thu@denotation@name{Nomenclature}
-  \newcommand\listequationname{List of Equations}
-  \newcommand\equationname{Equation}
-  \newcommand\thu@assumption@name{Assumption}
-  \newcommand\thu@definition@name{Definition}
-  \newcommand\thu@proposition@name{Proposition}
-  \newcommand\thu@lemma@name{Lemma}
-  \newcommand\thu@theorem@name{Theorem}
-  \newcommand\thu@axiom@name{Axiom}
-  \newcommand\thu@corollary@name{Corollary}
-  \newcommand\thu@exercise@name{Exercise}
-  \newcommand\thu@example@name{Example}
-  \newcommand\thu@remark@name{Remark}
-  \newcommand\thu@problem@name{Problem}
-  \newcommand\thu@conjecture@name{Conjecture}
-  \newcommand\thu@proof@name{proof}
-  \newcommand\thu@theorem@separator{: }
-  \newcommand\thu@ack@name{Acknowledgements}
-  \ifthu@degree@bachelor
-    \newcommand\thu@resume@title{Research Achievements}
-  \else
-    \newcommand\thu@resume@title{Resume, Publications and Research Achievements}
+}
+\thu@set@chapter@names
+\thu@option@hook{degree}{\thu@set@chapter@names}
+\thu@option@hook{language}{%
+  \ifx\@begindocumenthook\@undefined
+    \thu@set@chapter@names
   \fi
-\fi
+}
+\newcommand\thu@set@punctuations{%
+  \ifthu@language@chinese
+    \xeCJKDeclareCharClass{FullLeft}{"2018, "201C}%
+    \xeCJKDeclareCharClass{FullRight}{
+      "00B7, "2019, "201D, "2013, "2014, "2025, "2026, "2E3A,
+    }%
+  \else
+    \ifthu@language@english
+      \xeCJKDeclareCharClass{HalfLeft}{"2018, "201C}%
+      \xeCJKDeclareCharClass{HalfRight}{
+        "00B7, "2019, "201D, "2013, "2014, "2025, "2026, "2E3A,
+      }%
+    \fi
+  \fi
+}
+\thu@set@punctuations
+\thu@option@hook{language}{\thu@set@punctuations}
+\newcommand\thu@set@names{%
+  \ifthu@language@chinese
+    \ctexset{
+      figurename = 图,
+      tablename  = 表,
+    }
+    \def\thu@equation@name{公式}
+    \def\thu@assumption@name{假设}
+    \def\thu@definition@name{定义}
+    \def\thu@proposition@name{命题}
+    \def\thu@lemma@name{引理}
+    \def\thu@theorem@name{定理}
+    \def\thu@axiom@name{公理}
+    \def\thu@corollary@name{推论}
+    \def\thu@exercise@name{练习}
+    \def\thu@example@name{例}
+    \def\thu@remark@name{注释}
+    \def\thu@problem@name{问题}
+    \def\thu@conjecture@name{猜想}
+    \def\thu@proof@name{证明}
+    \def\thu@theorem@separator{：}
+  \else
+    \ifthu@language@english
+      \ctexset{
+        figurename = {Figure},
+        tablename  = {Table},
+      }
+      \def\thu@equation@name{Equation}
+      \def\thu@assumption@name{Assumption}
+      \def\thu@definition@name{Definition}
+      \def\thu@proposition@name{Proposition}
+      \def\thu@lemma@name{Lemma}
+      \def\thu@theorem@name{Theorem}
+      \def\thu@axiom@name{Axiom}
+      \def\thu@corollary@name{Corollary}
+      \def\thu@exercise@name{Exercise}
+      \def\thu@example@name{Example}
+      \def\thu@remark@name{Remark}
+      \def\thu@problem@name{Problem}
+      \def\thu@conjecture@name{Conjecture}
+      \def\thu@proof@name{Proof}
+      \def\thu@theorem@separator{: }
+    \fi
+  \fi
+}
+\thu@set@names
+\thu@option@hook{language}{\thu@set@names}
 \fancypagestyle{thu@empty}{%
   \fancyhf{}
   \renewcommand{\headrulewidth}{0pt}
@@ -453,8 +510,10 @@
 }
 \def\thu@textcircled#1{%
   \ifnum\value{#1} >9%
-    \ClassError{thuthesis}%
-      {Too many footnotes in this page.}{Keep footnote less than 10.}%
+    \thu@error{%
+      Too many footnotes in this page.
+      Keep footnote less than 10%
+    }%
   \fi
   {\thu@circlefont\symbol{\the\numexpr\value{#1}+"245F\relax}}%
 }
@@ -468,9 +527,26 @@
 \def\thu@@makefnmark{\hbox{{\normalfont\@thefnmark}}}
 \pretocmd{\@makefntext}{\let\@makefnmark\thu@@makefnmark}{}{}
 \apptocmd{\@makefntext}{\let\@makefnmark\thu@makefnmark}{}{}
-\ifthu@language@chinese
-  \def\mathellipsis{\cdots}
-\fi
+\urlstyle{same}
+\g@addto@macro\UrlBreaks{%
+  \do0\do1\do2\do3\do4\do5\do6\do7\do8\do9%
+  \do\A\do\B\do\C\do\D\do\E\do\F\do\G\do\H\do\I\do\J\do\K\do\L\do\M
+  \do\N\do\O\do\P\do\Q\do\R\do\S\do\T\do\U\do\V\do\W\do\X\do\Y\do\Z
+  \do\a\do\b\do\c\do\d\do\e\do\f\do\g\do\h\do\i\do\j\do\k\do\l\do\m
+  \do\n\do\o\do\p\do\q\do\r\do\s\do\t\do\u\do\v\do\w\do\x\do\y\do\z
+}
+\Urlmuskip=0mu plus 0.1mu
+\newcommand\thu@set@math@ellipsis{%
+  \ifthu@language@chinese
+    \DeclareRobustCommand\mathellipsis{\mathinner{\unicodecdots}}%
+  \else
+    \ifthu@language@english
+      \DeclareRobustCommand\mathellipsis{\mathinner{\unicodeellipsis}}%
+    \fi
+  \fi
+}
+\thu@set@math@ellipsis
+\thu@option@hook{language}{\thu@set@math@ellipsis}
 \protected\def\le{\leqslant}
 \protected\def\ge{\geqslant}
 \AtBeginDocument{%
@@ -491,8 +567,8 @@
 \AtBeginDocument{%
   \renewcommand\nabla{\mbfnabla}%
 }
-\newcommand\bm{\symbf}
-\renewcommand\boldsymbol{\symbf}
+\DeclareRobustCommand\bm[1]{{\symbf{#1}}}
+\DeclareRobustCommand\boldsymbol[1]{{\symbf{#1}}}
 \newcommand\square{\mdlgwhtsquare}
 \AtBeginDocument{%
   \renewcommand\checkmark{\ensuremath{✓}}%
@@ -504,17 +580,17 @@
 \iffalse
 \ifthu@degree@bachelor
   \def\thu@maketag#1{\maketag@@@{%
-    (\ignorespaces\text{\equationname\hskip0.5em}#1\unskip\@@italiccorr)}}
+    (\ignorespaces\text{\thu@equation@name\hskip0.5em}#1\unskip\@@italiccorr)}}
   \def\tagform@#1{\maketag@@@{%
-    (\ignorespaces\text{\equationname\hskip0.5em}#1\unskip\@@italiccorr)\equcaption{#1}}}
+    (\ignorespaces\text{\thu@equation@name\hskip0.5em}#1\unskip\@@italiccorr)\equcaption{#1}}}
 \fi
 \fi
 \def\thu@maketag#1{\maketag@@@{(\ignorespaces #1\unskip\@@italiccorr)}}
 \def\tagform@#1{\maketag@@@{(\ignorespaces #1\unskip\@@italiccorr)\equcaption{#1}}}
 \renewcommand{\eqref}[1]{\textup{(\ref{#1})}}
-\setlength{\floatsep}{12bp \@plus 2bp \@minus 4bp}
-\setlength{\textfloatsep}{12bp}
-\setlength{\intextsep}{12bp}
+\setlength{\floatsep}{6bp}
+\setlength{\textfloatsep}{6bp}
+\setlength{\intextsep}{6bp}
 \setlength{\@fptop}{0bp \@plus1.0fil}
 \setlength{\@fpsep}{12bp \@plus2.0fil}
 \setlength{\@fpbot}{0bp \@plus1.0fil}
@@ -523,32 +599,38 @@
 \renewcommand{\bottomfraction}{0.65}
 \renewcommand{\floatpagefraction}{0.60}
 \ifthu@degree@bachelor
-  \g@addto@macro\appendix{\renewcommand*{\thefigure}{\thechapter-\arabic{figure}}}
-  \g@addto@macro\appendix{\renewcommand*{\thetable}{\thechapter-\arabic{table}}}
+  \AtBeginDocument{% delay the check until all packages are loaded
+    \g@addto@macro\appendix{\renewcommand*{\thefigure}{\thechapter-\arabic{figure}}}
+    \g@addto@macro\appendix{\renewcommand*{\thetable}{\thechapter-\arabic{table}}}
+  }
 \fi
 \let\old@tabular\@tabular
 \def\thu@tabular{\dawu[1.5]\old@tabular}
-\DeclareCaptionFont{thu}{\dawu[1.3]}
+\DeclareCaptionFont{thu}{\dawu}
 \DeclareCaptionLabelSeparator{thu}{\hspace{\ccwd}}
 \captionsetup{
+  format         = hang,
   font           = thu,
   labelsep       = thu,
-  skip           = 6bp,
+  aboveskip      = 6bp,
+  belowskip      = 6bp,
   figureposition = bottom,
   tableposition  = top,
 }
 \captionsetup[sub]{font=thu}
 \renewcommand{\thesubfigure}{(\alph{subfigure})}
 \renewcommand{\thesubtable}{(\alph{subtable})}
+\heavyrulewidth=1.5bp
+\lightrulewidth=1bp
 \def\hlinewd#1{%
   \noalign{\ifnum0=`}\fi\hrule \@height #1 \futurelet
     \reserved@a\@xhline}
 \ifthu@degree@bachelor
-  \newcommand{\cabstractname}{中文摘要}
-  \newcommand{\eabstractname}{ABSTRACT}
+  \newcommand{\thu@abstract@name}{中文摘要}
+  \newcommand{\thu@abstract@name@en}{ABSTRACT}
 \else
-  \newcommand{\cabstractname}{摘\hspace{\ccwd}要}
-  \newcommand{\eabstractname}{Abstract}
+  \newcommand{\thu@abstract@name}{摘\hspace{\ccwd}要}
+  \newcommand{\thu@abstract@name@en}{Abstract}
 \fi
 \AtBeginDocument{%
   \pagestyle{thu@empty}
@@ -556,7 +638,7 @@
 \newcommand\thu@chapter@titleformat[1]{%
   \ifthu@degree@bachelor #1\else%
     \ifthenelse%
-      {\equal{#1}{\eabstractname}}%
+      {\equal{#1}{\thu@abstract@name@en}}%
       {\bfseries #1}%
       {#1}%
   \fi}
@@ -599,7 +681,7 @@
 \newcommand\thu@phantomsection{}
 \NewDocumentCommand\thu@chapter{s o m o}{
   \IfBooleanF{#1}{%
-    \ClassError{thuthesis}{You have to use the star form: \string\thu@chapter*}{}
+    \thu@error{You have to use the star form: \string\thu@chapter*}%
   }%
   \if@openright\cleardoublepage\else\clearpage\fi%
   \IfValueTF{#2}{%
@@ -629,44 +711,58 @@
 \setcounter{secnumdepth}{3}
 \setcounter{tocdepth}{2}
 \renewcommand\tableofcontents{%
-  \thu@chapter*[]{\contentsname}
-  \ifthu@degree@bachelor\xiaosi[1.667]\else\xiaosi[1.65]\fi\@starttoc{toc}\normalsize}
-\def\@pnumwidth{2em}
-\def\@tocrmarg{\@pnumwidth}
-\def\@dotsep{1}
-\renewcommand*\l@chapter[2]{%
-  \ifnum \c@tocdepth >\m@ne
-    \addpenalty{-\@highpenalty}%
-    \ifthu@degree@bachelor\vskip 6bp\else\vskip 4bp\fi \@plus\p@
-    \setlength\@tempdima{4em}%
-    \begingroup
-      \parindent \z@ \rightskip \@pnumwidth
-      \parfillskip -\@pnumwidth
-      \leavevmode
-      \advance\leftskip\@tempdima
-      \hskip -\leftskip
-      \begingroup
-        \ifthu@degree@graduate
+  \thu@chapter*[]{\contentsname}%
+  \@starttoc{toc}%
+}
+\thu@define@key{
+  toc-chapter-style = {
+    name = toc@chapter@style,
+    choices = {
+      arial,
+      times,
+    },
+    default = arial,
+  },
+}
+\newcommand\thu@leaders{\titlerule*[4bp]{.}}
+\newcommand\thu@set@toc@format{%
+  \contentsmargin{\z@}%
+  \ifthu@degree@bachelor
+    \titlecontents{chapter}
+      [\z@]{\addvspace{6bp}
+        \ifthu@toc@chapter@style@arial
           \sffamily
         \else
-          \ifthu@degree@bachelor
-            \heiti
-          \fi
+          \heiti
         \fi
-        #1%
-      \endgroup
-      \leaders\hbox{$\m@th\mkern \@dotsep mu\hbox{.}\mkern \@dotsep mu$}\hfill%
-      \nobreak #2\par
-      \penalty\@highpenalty
-    \endgroup
-  \fi}
-\patchcmd{\@dottedtocline}{\hb@xt@\@pnumwidth}{\hbox}{}{}
-\renewcommand*\l@section{%
-  \@dottedtocline{1}{\ccwd}{2.1em}}
-\renewcommand*\l@subsection{%
-  \@dottedtocline{2}{\ifthu@degree@bachelor 1.5\ccwd\else 2\ccwd\fi}{3em}}
-\renewcommand*\l@subsubsection{%
-  \@dottedtocline{3}{\ifthu@degree@bachelor 2.4em\else 3.5em\fi}{3.8em}}
+      }
+      {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+      {\rmfamily\thu@leaders\thecontentspage}%
+    \titlecontents{section}
+      [1\ccwd]{}
+      {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+      {\thu@leaders\thecontentspage}%
+    \titlecontents{subsection}
+      [1.5\ccwd]{}
+      {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+      {\thu@leaders\thecontentspage}%
+  \else
+    \titlecontents{chapter}
+      [\z@]{\addvspace{6bp}\sffamily}
+      {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+      {\rmfamily\thu@leaders\thecontentspage}%
+    \titlecontents{section}
+      [1\ccwd]{}
+      {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+      {\thu@leaders\thecontentspage}%
+    \titlecontents{subsection}
+      [2\ccwd]{}
+      {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+      {\thu@leaders\thecontentspage}%
+  \fi
+}
+\thu@set@toc@format
+\thu@option@hook{degree}{\thu@set@toc@format}
 \thu@define@key{
   secret-level = {
     name = secret@level,
@@ -917,52 +1013,82 @@
 }
 \newcommand\thu@titlepage@info{%
   \ifthu@degree@doctor
-    \thu@titlepage@info@doctor
+    \ifthu@degree@type@academic
+      \thu@titlepage@info@doctor@academic
+    \else
+      \thu@titlepage@info@doctor@professional
+    \fi
   \else
-    \thu@titlepage@info@master
+    \ifthu@degree@type@academic
+      \thu@titlepage@info@master@academic
+    \else
+      \ifx\thu@discipline\@empty
+        \thu@titlepage@info@master@other
+      \else
+        \thu@titlepage@info@master@engineer
+      \fi
+    \fi
   \fi
 }
-\newcommand\thu@cover@info@tabular[4]{%
-  \def\thu@cover@item##1##2##3{%
+\newcommand\thu@titlepage@info@tabular[4]{%
+  \def\thu@info@item##1##2##3{%
     \ifx##3\@empty\else
-      \thu@pad{#2}{\thu@fixed@box{#1}{##1}}%
+      \thu@pad{#1}{\thu@fixed@box{#2}{##1}}%
       \thu@pad{#3}{：}%
       ##2{##3}\\
     \fi
   }%
+  \fangsong\sanhao[1.95]%
   \begin{tabular}{l}%
     #4%
-  \end{tabular}
+  \end{tabular}%
 }
-\newcommand\thu@titlepage@info@doctor{%
-  \fangsong\sanhao[1.95]%
-  \thu@cover@info@tabular{2.8cm}{2.8cm}{0.82cm}{%
-    \thu@cover@item{培养单位}{}{\thu@department}%
-    \ifthu@degree@type@academic
-      \thu@cover@item{学科}{}{\thu@discipline}%
-      \thu@cover@item{研究生}{\thu@name@title}{\thu@author}%
-    \else
-      \thu@cover@item{申请人}{\thu@name@title}{\thu@author}%
-    \fi
-    \thu@cover@item{指导教师}{\thu@name@title}{\thu@supervisor}%
-    \thu@cover@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
-    \thu@cover@item{联合导师}{\thu@name@title}{\thu@joint@supervisor}%
+\newcommand\thu@titlepage@info@doctor@academic{%
+  \thu@titlepage@info@tabular{2.8cm}{2.8cm}{0.82cm}{%
+    \thu@info@item{培养单位}{}{\thu@department}%
+    \thu@info@item{学科}{}{\thu@discipline}%
+    \thu@info@item{研究生}{\thu@name@title}{\thu@author}%
+    \thu@info@item{指导教师}{\thu@name@title}{\thu@supervisor}%
+    \thu@info@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
+    \thu@info@item{联合导师}{\thu@name@title}{\thu@joint@supervisor}%
   }\par
 }
-\newcommand\thu@titlepage@info@master{%
-  \fangsong\sanhao[1.95]%
-  \thu@cover@info@tabular{5.5em}{3.6cm}{0.82cm}{%
-    \thu@cover@item{培养单位}{}{\thu@department}%
-    \ifthu@degree@type@academic
-      \thu@cover@item{学科}{}{\thu@discipline}%
-      \thu@cover@item{研究生}{\thu@name@title}{\thu@author}%
-    \else
-      \thu@cover@item{工程领域}{}{\thu@discipline}%
-      \thu@cover@item{申请人}{\thu@name@title}{\thu@author}%
-    \fi
-    \thu@cover@item{指导教师}{\thu@name@title}{\thu@supervisor}%
-    \thu@cover@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
-    \thu@cover@item{联合指导教师}{\thu@name@title}{\thu@joint@supervisor}%
+\newcommand\thu@titlepage@info@doctor@professional{%
+  \thu@titlepage@info@tabular{3.03cm}{5em}{1.52cm}{%
+    \thu@info@item{培养单位}{}{\thu@department}%
+    \thu@info@item{申请人}{\thu@name@title}{\thu@author}%
+    \thu@info@item{指导教师}{\thu@name@title}{\thu@supervisor}%
+    \thu@info@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
+    \thu@info@item{联合导师}{\thu@name@title}{\thu@joint@supervisor}%
+  }\par
+}
+\newcommand\thu@titlepage@info@master@academic{%
+  \thu@titlepage@info@tabular{3.59cm}{5.5em}{0.82cm}{%
+    \thu@info@item{培养单位}{}{\thu@department}%
+    \thu@info@item{学科}{}{\thu@discipline}%
+    \thu@info@item{研究生}{\thu@name@title}{\thu@author}%
+    \thu@info@item{指导教师}{\thu@name@title}{\thu@supervisor}%
+    \thu@info@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
+    \thu@info@item{联合指导教师}{\thu@name@title}{\thu@joint@supervisor}%
+  }\par
+}
+\newcommand\thu@titlepage@info@master@engineer{%
+  \thu@titlepage@info@tabular{2.8cm}{2.8cm}{1.34cm}{%
+    \thu@info@item{培养单位}{}{\thu@department}%
+    \thu@info@item{工程领域}{}{\thu@discipline}%
+    \thu@info@item{申请人}{\thu@name@title}{\thu@author}%
+    \thu@info@item{指导教师}{\thu@name@title}{\thu@supervisor}%
+    \thu@info@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
+    \thu@info@item{联合指导教师}{\thu@name@title}{\thu@joint@supervisor}%
+  }\par
+}
+\newcommand\thu@titlepage@info@master@other{%
+  \thu@titlepage@info@tabular{3.28cm}{5em}{1.52cm}{%
+    \thu@info@item{培养单位}{}{\thu@department}%
+    \thu@info@item{申请人}{\thu@name@title}{\thu@author}%
+    \thu@info@item{指导教师}{\thu@name@title}{\thu@supervisor}%
+    \thu@info@item{副指导教师}{\thu@name@title}{\thu@associate@supervisor}%
+    \thu@info@item{联合指导教师}{\thu@name@title}{\thu@joint@supervisor}%
   }\par
 }
 \newcommand\thu@titlepage@date{%
@@ -1115,25 +1241,34 @@
       \CJKunderline[skip=false, thickness=0.05em, depth=0.12em]{\thu@title}\par
     }\par
     \vskip 2.5cm%
-    \parbox[t][6.0cm][t]{\textwidth}{%
+    \begingroup
       \fangsong\sanhao[2.3]%
       \leftskip=2.5cm%
       \parindent=\z@
-      \def\thu@cover@item##1##2##3{%
+      \def\thu@info@item##1##2##3{%
         \ifx##3\@empty\else
-          \thu@fixed@box{4em}{##1}：##2{##3}\\
+          \thu@fixed@box{%
+            \ifx\thu@joint@supervisor\@empty
+              4em%
+            \else
+              5.5em%
+            \fi
+          }{##1}：##2{##3}\\
         \fi
       }%
       \def\thu@name@title@format##1##2{%
         \thu@stretch{3em}{##1}\quad ##2%
       }
-      \thu@cover@item{系别}{}{\thu@department}%
-      \thu@cover@item{专业}{}{\thu@discipline}%
-      \thu@cover@item{姓名}{\thu@name@title}{\thu@author}%
-      \thu@cover@item{指导教师}{\thu@name@title}{\thu@supervisor}%
-      \thu@cover@item{辅导教师}{\thu@name@title}{\thu@associate@supervisor}%
-    }\par
-    {\xiaosi\thu@format@date{\thu@date@zh@digit}{\thu@date}\par}%
+      \thu@info@item{系别}{}{\thu@department}%
+      \thu@info@item{专业}{}{\thu@discipline}%
+      \thu@info@item{姓名}{\thu@name@title}{\thu@author}%
+      \thu@info@item{指导教师}{\thu@name@title}{\thu@supervisor}%
+      \thu@info@item{辅导教师}{\thu@name@title}{\thu@associate@supervisor}%
+      \thu@info@item{联合指导教师}{\thu@name@title}{\thu@joint@supervisor}%
+      \par
+    \endgroup
+    \vskip 1.5cm%
+    {\CJKfamily+{}\xiaosi\thu@format@date{\thu@date@zh@digit}{\thu@date}\par}%
   \endgroup
   \clearpage
   \restoregeometry
@@ -1276,7 +1411,7 @@
 }
 \newcommand\thu@clist@use[2]{%
   \def\thu@@tmp{}%
-  \kv@set@family@handler{thu@clist}{%
+  \def\thu@clist@processor##1{%
     \ifx\thu@@tmp\@empty
       \def\thu@@tmp{#2}%
     \else
@@ -1284,7 +1419,7 @@
     \fi
     ##1%
   }%
-  \kvsetkeys@expandafter{thu@clist}{#1}%
+  \expandafter\comma@parse\expandafter{#1}{\thu@clist@processor}%
 }
 \newbox\thu@kw
 \newcommand\thu@put@keywords[2]{%
@@ -1295,18 +1430,18 @@
   \endgroup}
 \newenvironment{abstract}{%
   \ifthu@degree@bachelor\clearpage\else\cleardoublepage\fi
-  \thu@setchinese
-  \thu@chapter*[]{\cabstractname} % no tocline
+  \thusetup{language = chinese}%
+  \thu@chapter*[]{\thu@abstract@name}%  %no tocline
 }{%
   \ifthu@degree@doctor\vfill\else\vskip12bp\fi
   \thu@put@keywords{\textbf{关键词：}}{%
     \thu@clist@use{\thu@keywords}{；}%
   }%
-  \thu@setdefaultlanguage
+  \thu@reset@main@language % switch back to main language
 }
 \newenvironment{abstract*}{%
-  \thu@setenglish
-  \thu@chapter*[]{\eabstractname} % no tocline
+  \thusetup{language = english}
+  \thu@chapter*[]{\thu@abstract@name@en} % no tocline
 }{%
   \ifthu@degree@doctor\vfill\else\vskip12bp\fi
   \thu@put@keywords{%
@@ -1314,7 +1449,7 @@
   }{%
     \thu@clist@use{\thu@keywords@en}{; }%
   }%
-  \thu@setdefaultlanguage
+  \thu@reset@main@language % switch back to main language
 }
 \newenvironment{denotation}[1][2.5cm]{%
   \thu@chapter*[]{\thu@denotation@name} % no tocline
@@ -1333,51 +1468,69 @@
   labelsep*=0.5cm,
   itemindent=0pt,
 }
-\newcommand\thu@declarename{声\hspace{\ccwd}明}
-\newcommand{\thu@declaretext}{本人郑重声明：所呈交的学位论文，是本人在导师指导下
+\newcommand\thu@statement@name{声\hspace{\ccwd}明}
+\newcommand{\thu@statement@text}{本人郑重声明：所呈交的学位论文，是本人在导师指导下
   ，独立进行研究工作所取得的成果。尽我所知，除文中已经注明引用的内容外，本学位论
   文的研究成果不包含任何他人享有著作权的内容。对本论文所涉及的研究工作做出贡献的
   其他个人和集体，均已在文中以明确方式标明。}
 \newcommand{\thu@signature}{签\hspace{1em}名：}
 \newcommand{\thu@backdate}{日\hspace{1em}期：}
 \newenvironment{acknowledgements}{%
-  \thu@chapter*{\thu@ack@name}%
+  \thu@chapter*{\thu@acknowledgements@name}%
 }{}
 \newcommand\statement[1][]{%
   \def\thu@@tmp{#1}%
   \ifx\thu@@tmp\@empty
-    \thu@chapter*{\thu@declarename}%
-    \par{\xiaosi\parindent2em\thu@declaretext}\vskip2cm%
+    \thu@chapter*{\thu@statement@name}%
+    \par{\xiaosi\parindent2em\thu@statement@text}\vskip2cm%
     {\xiaosi\hfill\thu@signature\thu@underline[2.5cm]\relax
       \thu@backdate\thu@underline[2.5cm]\relax}%
   \else
     \includepdf[pagecommand={\thispagestyle{thu@empty}%
-      \addcontentsline{toc}{chapter}{\thu@declarename}%
+      \addcontentsline{toc}{chapter}{\thu@statement@name}%
     }]{#1}%
   \fi
 }
 \let\acknowledgement\acknowledgements
 \let\endacknowledgement\endacknowledgements
-\def\thu@starttoc#1{% #1: float type, prepend type name in \listof*** entry.
-  \let\oldnumberline\numberline
-  \def\numberline##1{\oldnumberline{\csname #1name\endcsname\hskip.4em ##1}}
-  \@starttoc{\csname ext@#1\endcsname}
-  \let\numberline\oldnumberline}
 \def\thu@listof#1{% #1: float type
   \setcounter{tocdepth}{2} % restore tocdepth in case being modified
   \@ifstar
-    {\thu@chapter*[]{\csname list#1name\endcsname}\thu@starttoc{#1}}
-    {\thu@chapter*{\csname list#1name\endcsname}\thu@starttoc{#1}}}
+    {\thu@chapter*[]{\csname list#1name\endcsname}\@starttoc{\csname ext@#1\endcsname}}
+    {\thu@chapter*{\csname list#1name\endcsname}\@starttoc{\csname ext@#1\endcsname}}%
+}
 \renewcommand\listoffigures{\thu@listof{figure}}
-\renewcommand*\l@figure{\ifthu@degree@bachelor\relax\else\addvspace{6bp}\fi\@dottedtocline{1}{0em}{4em}}
+\newlength{\thu@list@label@width}
+\newcommand\thu@set@list@label@width{%
+  \ifthu@language@chinese
+    \setlength{\thu@list@label@width}{3.5em}%
+  \else
+    \ifthu@language@english
+      \setlength{\thu@list@label@width}{4.5em}%
+    \fi
+  \fi
+}
+\thu@set@list@label@width
+\thu@option@hook{language}{\thu@set@list@label@width}
+\titlecontents{figure}
+  [\thu@list@label@width]{\addvspace{6bp}}
+  {\contentslabel[\figurename~\thecontentslabel]{\thu@list@label@width}}{}
+  {\thu@leaders\thecontentspage}
 \renewcommand\listoftables{\thu@listof{table}}
-\let\l@table\l@figure
+\titlecontents{table}
+  [\thu@list@label@width]{\addvspace{6bp}}
+  {\contentslabel[\tablename~\thecontentslabel]{\thu@list@label@width}}{}
+  {\thu@leaders\thecontentspage}
 \def\ext@equation{loe}
 \def\equcaption#1{%
   \addcontentsline{\ext@equation}{equation}%
                   {\protect\numberline{#1}}}
 \newcommand\listofequations{\thu@listof{equation}}
-\let\l@equation\l@figure
+\titlecontents{equation}
+  [0pt]{\addvspace{6bp}}
+  {\thu@equation@name~\thecontentslabel}{}
+  {\thu@leaders\thecontentspage}
+\contentsuse{equation}{loe}
 \DeclareRobustCommand\inlinecite{\@inlinecite}
 \def\@inlinecite#1{\begingroup\let\@cite\NAT@citenum\citep{#1}\endgroup}
 \let\onlinecite\inlinecite
@@ -1397,11 +1550,9 @@
 \thu@define@key{
   cite-style = {
     name = cite@style,
-    code = {
-      \@nameuse{bibstyle@thuthesis-\thu@cite@style}
-    },
   }
 }
+\thu@option@hook{cite-style}{\@nameuse{bibstyle@thuthesis-\thu@cite@style}}
 \patchcmd\NAT@citexnum{%
   \@ifnum{\NAT@ctype=\z@}{%
     \if*#2*\else\NAT@cmt#2\fi
@@ -1439,35 +1590,78 @@
 \thu@define@key{
   toc-depth = {
     name = toc@depth,
-    code = {\addtocontents{toc}{\protect\setcounter{tocdepth}{\thu@toc@depth}}},
   },
 }
-\g@addto@macro\appendix{\addtocontents{toc}{\protect\setcounter{tocdepth}{0}}}
+\thu@option@hook{toc-depth}{%
+  \protected@write\@auxout{}{%
+    \string\ttl@writefile{toc}{%
+      \protect\setcounter{tocdepth}{\thu@toc@depth}%
+    }%
+  }%
+  \addtocontents{lof}{\string\let\string\contentsline\string\ttl@gobblecontents}
+  \addtocontents{lot}{\string\let\string\contentsline\string\ttl@gobblecontents}
+  \addtocontents{loe}{\string\let\string\contentsline\string\ttl@gobblecontents}
+}
+\g@addto@macro\appendix{%
+  \thusetup{
+    toc-depth = 0,
+  }
+}
 \newenvironment{survey}{%
   \chapter{外文资料的调研阅读报告}%
-  \thu@setenglish
+  \thusetup{language = english}%
   \let\title\thu@appendix@title
   \let\maketitle\thu@appendix@maketitle
+  \thu@set@partial@toc@format
+  \renewcommand\tableofcontents{%
+    \section*{Contents}%
+    \thu@pdfbookmark{1}{Contents}%
+    \printcontents[survey]{l}{1}[2]{}%
+  }%
   \renewcommand\bibname{参考文献}%
   \let\bibsection\thu@appendix@bibsection
   \renewcommand\@bibunitname{main-survey}%
   \let\bibliographystyle\defaultbibliographystyle
   \let\bibliography\thu@appendix@bibliography
   \begin{bibunit}%
+  \startcontents[survey]%
 }{%
+  \stopcontents[survey]%
   \end{bibunit}%
+  \thu@reset@main@language % restore language
 }
 \newenvironment{translation}{%
   \chapter{外文资料的书面翻译}%
-  \thu@setenglish
+  \thusetup{language = chinese}%
   \let\title\thu@appendix@title
   \let\maketitle\thu@appendix@maketitle
-  \renewcommand\bibname{书面翻译对应的原文索引}%
-  \let\bibsection\thu@appendix@bibsection
+  \thu@set@partial@toc@format
+  \renewcommand\tableofcontents{%
+    \section*{目录}%
+    \thu@pdfbookmark{1}{目录}%
+    \printcontents[translation]{l}{1}[2]{}%
+  }%
+  \def\bibsection{%
+    \begingroup
+      \ctexset{section/numbering=false}%
+      \section{\bibname}%
+    \endgroup
+  }%
   \renewcommand\@bibunitname{main-translation}%
   \let\bibliographystyle\defaultbibliographystyle
   \let\bibliography\thu@appendix@bibliography
   \begin{bibunit}%
+  \startcontents[translation]%
+}{%
+  \stopcontents[translation]%
+  \end{bibunit}%
+  \thu@reset@main@language % restore language
+}
+\newenvironment{translation-index}{%
+  \begin{bibunit}%
+    \renewcommand\@bibunitname{main-index}%
+    \renewcommand\bibname{书面翻译对应的原文索引}%
+    \let\bibsection\thu@appendix@bibsection
 }{%
   \end{bibunit}%
 }
@@ -1479,9 +1673,24 @@
   \end{center}%
   \par
 }
+\newcommand\thu@set@partial@toc@format{%
+  \titlecontents{section}
+    [\z@]{}
+    {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+    {\thu@leaders\thecontentspage}%
+  \titlecontents{subsection}
+    [1\ccwd]{}
+    {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+    {\thu@leaders\thecontentspage}%
+  \titlecontents{subsubsection}
+    [2\ccwd]{}
+    {\contentspush{\thecontentslabel\hspace{\ccwd}}}{}
+    {\thu@leaders\thecontentspage}%
+}
 \newcommand\thu@appendix@bibsection{%
   \par
   \vskip 20bp%
+  \thu@pdfbookmark{1}{\bibname}%
   \begingroup
     \centering
     \xiaosi[1.667]\bibname\par
@@ -1489,7 +1698,7 @@
   \vskip 6bp%
 }%
 \newcommand\thu@appendix@bibliography[1]{\putbib[#1]}
-\newenvironment{resume}[1][\thu@resume@title]{%
+\newenvironment{resume}[1][\thu@resume@name]{%
   \thu@chapter*{#1}}{}
 \newcommand{\resumeitem}[1]{%
   \vspace{24bp}{\sihao\heiti\centerline{#1}}\par\vspace{6bp}}
@@ -1502,14 +1711,14 @@
 \setlist[achievements]{label=[\arabic*],align=left,nosep,itemsep=8bp,
   leftmargin=10mm,labelsep=!,before=\xiaosi[1.26]}
 \def\publicationskip{\bigskip\bigskip}
-\newcommand\thu@atendpackage{\csname ctex_at_end_package:nn\endcsname}
-\thu@atendpackage{hyperref}{
+\AtEndOfPackageFile*{hyperref}{
   \hypersetup{
     linktoc            = all,
     bookmarksdepth     = 2,
     bookmarksnumbered  = true,
     bookmarksopen      = true,
     bookmarksopenlevel = 1,
+    bookmarksdepth     = 3,
     unicode            = true,
     psdextra           = true,
     breaklinks         = true,
@@ -1533,6 +1742,15 @@
   \@ifpackagelater{hyperref}{2019/04/27}{}{%
     \g@addto@macro\psdmapshortnames{\let\mu\textmu}
   }%
+  \ifthu@language@chinese
+    \hypersetup{
+      pdflang = zh-CN,
+    }%
+  \else
+    \hypersetup{
+      pdflang = en-US,
+    }%
+  \fi
   \AtBeginDocument{%
     \ifthu@language@chinese
       \hypersetup{
@@ -1540,7 +1758,6 @@
         pdfauthor   = \thu@author,
         pdfsubject  = \thu@degree@name,
         pdfkeywords = \thu@keywords,
-        pdflang     = zh-CN,
       }%
     \else
       \hypersetup{
@@ -1548,14 +1765,13 @@
         pdfauthor   = \thu@author@en,
         pdfsubject  = \thu@degree@name@en,
         pdfkeywords = \thu@keywords@en,
-        pdflang     = en-US,
       }%
     \fi
     \hypersetup{
       pdfcreator={\thuthesis-v\version}}
   }%
 }
-\thu@atendpackage{nomencl}{
+\AtEndOfPackageFile*{nomencl}{
   \let\nomname\thu@denotation@name
   \def\thenomenclature{\begin{denotation}[\nom@tempdim]}
   \def\endthenomenclature{\end{denotation}}
@@ -1564,7 +1780,7 @@
   \let\thu@LT@array\LT@array
   \def\LT@array{\dawu[1.5]\thu@LT@array} % set default font size
 }
-\thu@atendpackage{siunitx}{%
+\AtEndOfPackageFile*{siunitx}{%
   \sisetup{
     group-minimum-digits = 4,
     separate-uncertainty = true,
@@ -1588,12 +1804,45 @@
     \fi
   }
   \thu@set@siunitx@language
-  \thu@addto{language}{\thu@set@siunitx@language}
+  \thu@option@hook{language}{\thu@set@siunitx@language}
 }
-\thu@atendpackage{ntheorem}{%
+\AtEndOfPackageFile*{amsthm}{%
+  \newtheoremstyle{thu}
+    {\z@}{\z@}
+    {\normalfont}{\z@}
+    {\normalfont\sffamily}{\thu@theorem@separator}
+    {0.5em}{}
+  \theoremstyle{thu}
+  \newtheorem{assumption}{\thu@assumption@name}[chapter]%
+  \newtheorem{definition}{\thu@definition@name}[chapter]%
+  \newtheorem{proposition}{\thu@proposition@name}[chapter]%
+  \newtheorem{lemma}{\thu@lemma@name}[chapter]%
+  \newtheorem{theorem}{\thu@theorem@name}[chapter]%
+  \newtheorem{axiom}{\thu@axiom@name}[chapter]%
+  \newtheorem{corollary}{\thu@corollary@name}[chapter]%
+  \newtheorem{exercise}{\thu@exercise@name}[chapter]%
+  \newtheorem{example}{\thu@example@name}[chapter]%
+  \newtheorem{remark}{\thu@remark@name}[chapter]%
+  \newtheorem{problem}{\thu@problem@name}[chapter]%
+  \newtheorem{conjecture}{\thu@conjecture@name}[chapter]%
+  \renewenvironment{proof}[1][\thu@proof@name]{\par
+    \pushQED{\qed}%
+    % \normalfont \topsep6\p@\@plus6\p@\relax
+    \normalfont \topsep\z@\relax
+    \trivlist
+    \item[\hskip\labelsep
+          \itshape
+      % #1\@addpunct{.}]\ignorespaces
+      \textsf{#1}\@addpunct{\thu@theorem@separator}]\ignorespaces
+  }{%
+    \popQED\endtrivlist\@endpefalse
+  }
+  \renewcommand\qedsymbol{\ensuremath{\QED}}
+}
+\AtEndOfPackageFile*{ntheorem}{%
   \theorembodyfont{\normalfont}%
   \theoremheaderfont{\normalfont\sffamily}%
-  \theoremsymbol{\ensuremath{\square}}%
+  \theoremsymbol{\ensuremath{\QED}}%
   \newtheorem*{proof}{\thu@proof@name}%
   \theoremstyle{plain}%
   \theoremsymbol{}%
@@ -1610,6 +1859,31 @@
   \newtheorem{remark}{\thu@remark@name}[chapter]%
   \newtheorem{problem}{\thu@problem@name}[chapter]%
   \newtheorem{conjecture}{\thu@conjecture@name}[chapter]%
+}
+\AtEndOfPackageFile*{algorithm}{
+  \g@addto@macro\appendix{\renewcommand*{\thealgorithm}{\thechapter-\arabic{algorithm}}}%
+  \newcommand\thu@set@algorithm@language{%
+    \ifthu@language@chinese
+      \floatname{algorithm}{算法}%
+    \else
+      \floatname{algorithm}{Algorithm}%
+    \fi
+  }
+  \thu@set@algorithm@language
+  \thu@option@hook{language}{\thu@set@algorithm@language}
+}
+
+\AtEndOfPackageFile*{minted}{
+  \g@addto@macro\appendix{\renewcommand*{\thelisting}{\thechapter-\arabic{listing}}}%
+  \newcommand\thu@set@listing@language{%
+    \ifthu@language@chinese
+      \floatname{listing}{代码}%
+    \else
+      \floatname{listing}{Listing}%
+    \fi
+  }
+  \thu@set@listing@language
+  \thu@option@hook{language}{\thu@set@listing@language}
 }
 \NewDocumentCommand{\spine}{O{\thu@title} O{\thu@author}}{%
   \newpage\thispagestyle{empty}%

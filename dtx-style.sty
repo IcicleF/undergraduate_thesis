@@ -21,8 +21,18 @@
 %% To produce the documentation run the original source files ending with `.dtx'
 %% through LaTeX.
 %% 
-\RequirePackage{ifxetex}
-\RequireXeTeX
+\newcommand\thu@error[1]{%
+  \ClassError{thuthesis}{#1}{}%
+}
+\@ifl@t@r\fmtversion{2017/04/15}{}{
+  \thu@error{%
+    TeX Live 2017 or later version is required to compile this document%
+  }
+}
+\RequirePackage{iftex}
+\ifXeTeX\else
+  \thu@error{XeLaTeX is required to compile this document}
+\fi
 \ProvidesPackage{dtx-style}
 \RequirePackage{hypdoc}
 \RequirePackage{ifthen}
